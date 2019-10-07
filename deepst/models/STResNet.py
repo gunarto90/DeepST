@@ -20,34 +20,34 @@ def _shortcut(_input, residual):
     return add([_input, residual])
 
 
-def _bn_relu_conv(nb_filter, nb_row, nb_col, subsample=(1, 1), bn=False):
+def _bn_relu_conv(nb_filter, nb_row, nb_col, strides=(1, 1), bn=False):
     def f(_input):
         if bn:
-            _input = BatchNormalization(mode=0, axis=1)(_input)
+            _input = BatchNormalization(axis=1)(_input)
         activation = Activation('relu')(_input)
-        return Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col, subsample=subsample, border_mode="same")(activation)
+        return Convolution2D(filters=nb_filter, kernel_size=(nb_row, nb_col), strides=strides, padding="same")(activation)
     return f
 
 
-def _residual_unit(nb_filter, init_subsample=(1, 1)):
+def _residual_unit(nb_filter, init_subsample=(1, 1), bn=False):
     def f(_input):
-        residual = _bn_relu_conv(nb_filter, 3, 3)(_input)
-        residual = _bn_relu_conv(nb_filter, 3, 3)(residual)
+        residual = _bn_relu_conv(nb_filter, 3, 3, strides=init_subsample, bn=bn)(_input)
+        residual = _bn_relu_conv(nb_filter, 3, 3, strides=init_subsample, bn=bn)(residual)
         return _shortcut(_input, residual)
     return f
 
 
-def ResUnits(residual_unit, nb_filter, repetations=1):
+def ResUnits(residual_unit, nb_filter, repetations=1, bn=False):
     def f(_input):
         for i in range(repetations):
             init_subsample = (1, 1)
             _input = residual_unit(nb_filter=nb_filter,
-                                  init_subsample=init_subsample)(_input)
+                                  init_subsample=init_subsample, bn=bn)(_input)
         return _input
     return f
 
 
-def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32), external_dim=8, nb_residual_unit=3):
+def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32), external_dim=8, nb_residual_unit=3, bn=False):
     '''
     C - Temporal Closeness
     P - Period
@@ -65,15 +65,13 @@ def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32)
             _input = Input(shape=(nb_flow * len_seq, map_height, map_width))
             main_inputs.append(_input)
             # Conv1
-            conv1 = Convolution2D(
-                nb_filter=64, nb_row=3, nb_col=3, border_mode="same")(_input)
+            conv1 = Convolution2D(filters=64, kernel_size=(3,3), padding="same")(_input)
             # [nb_residual_unit] Residual Units
             residual_output = ResUnits(_residual_unit, nb_filter=64,
-                              repetations=nb_residual_unit)(conv1)
+                              repetations=nb_residual_unit, bn=bn)(conv1)
             # Conv2
             activation = Activation('relu')(residual_output)
-            conv2 = Convolution2D(
-                nb_filter=nb_flow, nb_row=3, nb_col=3, border_mode="same")(activation)
+            conv2 = Convolution2D(filters=nb_flow, kernel_size=(3,3), padding="same")(activation)
             outputs.append(conv2)
 
     # parameter-matrix-based fusion
@@ -91,9 +89,9 @@ def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32)
         # external input
         external_input = Input(shape=(external_dim,))
         main_inputs.append(external_input)
-        embedding = Dense(output_dim=10)(external_input)
+        embedding = Dense(units=10)(external_input)
         embedding = Activation('relu')(embedding)
-        h1 = Dense(output_dim=nb_flow * map_height * map_width)(embedding)
+        h1 = Dense(units=nb_flow * map_height * map_width)(embedding)
         activation = Activation('relu')(h1)
         external_output = Reshape((nb_flow, map_height, map_width))(activation)
         main_output = add([main_output, external_output])
@@ -101,7 +99,7 @@ def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32)
         print('external_dim:', external_dim)
 
     main_output = Activation('tanh')(main_output)
-    model = Model(input=main_inputs, output=main_output)
+    model = Model(inputs=main_inputs, outputs=main_output)
 
     return model
 
@@ -109,3 +107,4 @@ if __name__ == '__main__':
     model = stresnet(external_dim=28, nb_residual_unit=12)
     #plot(model, to_file='ST-ResNet.png', show_shapes=True)
     model.summary()
+

@@ -7,7 +7,6 @@ import time
 from .minmax_normalization import MinMaxNormalization
 from ..utils import string2timestamp
 
-
 def timestamp2vec(timestamps):
     # tm_wday range [0, 6], Monday is 0
     vec = [time.strptime(str(t[:8], encoding='utf-8'), '%Y%m%d').tm_wday for t in timestamps]  # python3
@@ -24,7 +23,7 @@ def timestamp2vec(timestamps):
     return np.asarray(ret)
 
 
-def remove_incomplete_days(data, timestamps, T=48):
+def remove_incomplete_days(data, timestamps, T=48, debug=False):
     # remove a certain day which has not 48 timestamps
     days = []  # available days: some day only contain some seqs
     days_incomplete = []
@@ -38,7 +37,8 @@ def remove_incomplete_days(data, timestamps, T=48):
         else:
             days_incomplete.append(timestamps[i][:8])
             i += 1
-    print("incomplete days: ", days_incomplete)
+    if debug:
+        print("incomplete days: ", days_incomplete)
     days = set(days)
     idx = []
     for i, t in enumerate(timestamps):
@@ -73,7 +73,7 @@ def split_by_time(data, timestamps, split_timestamp):
     return (np.asarray(data_1), timestamps_1), (np.asarray(data_2), timestamps_2)
 
 
-def timeseries2seqs(data, timestamps, length=3, T=48):
+def timeseries2seqs(data, timestamps, length=3, T=48, debug=False):
     raw_ts = copy(timestamps)
     if type(timestamps[0]) != pd.Timestamp:
         timestamps = string2timestamp(timestamps, T=T)
@@ -98,10 +98,11 @@ def timeseries2seqs(data, timestamps, length=3, T=48):
             Y.append(y)
     X = np.asarray(X)
     Y = np.asarray(Y)
-    print("X shape: ", X.shape, "Y shape:", Y.shape)
+    if debug:
+        print("X shape: ", X.shape, "Y shape:", Y.shape)
     return X, Y
 
-def timeseries2seqs_meta(data, timestamps, length=3, T=48):
+def timeseries2seqs_meta(data, timestamps, length=3, T=48, debug=False):
     raw_ts = copy(timestamps)
     if type(timestamps[0]) != pd.Timestamp:
         timestamps = string2timestamp(timestamps, T=T)
@@ -128,11 +129,12 @@ def timeseries2seqs_meta(data, timestamps, length=3, T=48):
             Y.append(y)
     X = np.asarray(X)
     Y = np.asarray(Y)
-    print("X shape: ", X.shape, "Y shape:", Y.shape)
+    if debug:
+        print("X shape: ", X.shape, "Y shape:", Y.shape)
     return X, Y, avail_timestamps
 
 
-def timeseries2seqs_peroid_trend(data, timestamps, length=3, T=48, peroid=pd.DateOffset(days=7), peroid_len=2):
+def timeseries2seqs_peroid_trend(data, timestamps, length=3, T=48, peroid=pd.DateOffset(days=7), peroid_len=2, debug=False):
     raw_ts = copy(timestamps)
     if type(timestamps[0]) != pd.Timestamp:
         timestamps = string2timestamp(timestamps, T=T)
@@ -153,7 +155,8 @@ def timeseries2seqs_peroid_trend(data, timestamps, length=3, T=48, peroid=pd.Dat
     X = []
     Y = []
     for b in range(1, len(breakpoints)):
-        print('breakpoints: ', breakpoints[b-1], breakpoints[b])
+        if debug:
+            print('breakpoints: ', breakpoints[b-1], breakpoints[b])
         idx = range(breakpoints[b-1], breakpoints[b])
         for i in range(len(idx) - length):
             # period
@@ -177,11 +180,12 @@ def timeseries2seqs_peroid_trend(data, timestamps, length=3, T=48, peroid=pd.Dat
             Y.append(y)
     X = np.asarray(X)
     Y = np.asarray(Y)
-    print("X shape: ", X.shape, "Y shape:", Y.shape)
+    if debug:
+        print("X shape: ", X.shape, "Y shape:", Y.shape)
     return X, Y
 
 
-def timeseries2seqs_3D(data, timestamps, length=3, T=48):
+def timeseries2seqs_3D(data, timestamps, length=3, T=48, debug=False):
     raw_ts = copy(timestamps)
     if type(timestamps[0]) != pd.Timestamp:
         timestamps = string2timestamp(timestamps, T=T)
@@ -197,7 +201,8 @@ def timeseries2seqs_3D(data, timestamps, length=3, T=48):
     X = []
     Y = []
     for b in range(1, len(breakpoints)):
-        print('breakpoints: ', breakpoints[b-1], breakpoints[b])
+        if debug:
+            print('breakpoints: ', breakpoints[b-1], breakpoints[b])
         idx = range(breakpoints[b-1], breakpoints[b])
         for i in range(len(idx) - length):
             x = data[idx[i:i+length]].reshape(-1, length, 32, 32)
@@ -206,11 +211,12 @@ def timeseries2seqs_3D(data, timestamps, length=3, T=48):
             Y.append(y)
     X = np.asarray(X)
     Y = np.asarray(Y)
-    print("X shape: ", X.shape, "Y shape:", Y.shape)
+    if debug:
+        print("X shape: ", X.shape, "Y shape:", Y.shape)
     return X, Y
 
 
-def bug_timeseries2seqs(data, timestamps, length=3, T=48):
+def bug_timeseries2seqs(data, timestamps, length=3, T=48, debug=False):
     # have a bug
     if type(timestamps[0]) != pd.Timestamp:
         timestamps = string2timestamp(timestamps, T=T)
@@ -224,7 +230,8 @@ def bug_timeseries2seqs(data, timestamps, length=3, T=48):
     X = []
     Y = []
     for b in range(1, len(breakpoints)):
-        print('breakpoints: ', breakpoints[b-1], breakpoints[b])
+        if debug:
+            print('breakpoints: ', breakpoints[b-1], breakpoints[b])
         idx = range(breakpoints[b-1], breakpoints[b])
         for i in range(len(idx) - 3):
             x = np.vstack(data[idx[i:i+3]])
@@ -233,5 +240,7 @@ def bug_timeseries2seqs(data, timestamps, length=3, T=48):
             Y.append(y)
     X = np.asarray(X)
     Y = np.asarray(Y)
-    print("X shape: ", X.shape, "Y shape:", Y.shape)
+    if debug:
+        print("X shape: ", X.shape, "Y shape:", Y.shape)
     return X, Y
+
