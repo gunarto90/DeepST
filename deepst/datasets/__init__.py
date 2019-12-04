@@ -4,8 +4,8 @@ import time
 
 def load_stdata(fname):
     f = h5py.File(fname, 'r')
-    data = f['data'].value
-    timestamps = f['date'].value
+    data = f['data'][()]
+    timestamps = f['date'][()]
     f.close()
     return data, timestamps
 
@@ -22,11 +22,11 @@ def stat(fname):
         ts_str, te_str = time.strftime("%Y-%m-%d", ts), time.strftime("%Y-%m-%d", te)
         return nb_timeslot, ts_str, te_str
 
-    with h5py.File(fname) as f:
+    with h5py.File(fname, 'r') as f:
         nb_timeslot, ts_str, te_str = get_nb_timeslot(f)
         nb_day = int(nb_timeslot / 48)
-        mmax = f['data'].value.max()
-        mmin = f['data'].value.min()
+        mmax = f['data'][()].max()
+        mmin = f['data'][()].min()
         stat = '=' * 5 + 'stat' + '=' * 5 + '\n' + \
                'data shape: %s\n' % str(f['data'].shape) + \
                '# of days: %i, from %s to %s\n' % (nb_day, ts_str, te_str) + \
@@ -53,8 +53,8 @@ def stat(fname):
     with h5py.File(fname) as f:
         nb_timeslot, ts_str, te_str = get_nb_timeslot(f)
         nb_day = int(nb_timeslot / 48)
-        mmax = f['data'].value.max()
-        mmin = f['data'].value.min()
+        mmax = f['data'][()].max()
+        mmin = f['data'][()].min()
         stat = '=' * 5 + 'stat' + '=' * 5 + '\n' + \
                'data shape: %s\n' % str(f['data'].shape) + \
                'date shape: %s\n' % str(f['date'].shape) + \

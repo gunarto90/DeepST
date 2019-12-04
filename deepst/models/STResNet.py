@@ -47,7 +47,7 @@ def ResUnits(residual_unit, nb_filter, repetations=1, bn=False):
     return f
 
 
-def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32), external_dim=8, nb_residual_unit=3, bn=False):
+def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32), external_dim=8, nb_residual_unit=3, bn=False, fusion=True):
     '''
     C - Temporal Closeness
     P - Period
@@ -74,15 +74,18 @@ def stresnet(c_conf=(3, 2, 32, 32), p_conf=(3, 2, 32, 32), t_conf=(3, 2, 32, 32)
             conv2 = Convolution2D(filters=nb_flow, kernel_size=(3,3), padding="same")(activation)
             outputs.append(conv2)
 
-    # parameter-matrix-based fusion
-    if len(outputs) == 1:
-        main_output = outputs[0]
+    if fusion:
+        # parameter-matrix-based fusion
+        if len(outputs) == 1:
+            main_output = outputs[0]
+        else:
+            from .iLayer import iLayer
+            new_outputs = []
+            for output in outputs:
+                new_outputs.append(iLayer()(output))
+            main_output = add(new_outputs)
     else:
-        from .iLayer import iLayer
-        new_outputs = []
-        for output in outputs:
-            new_outputs.append(iLayer()(output))
-        main_output = add(new_outputs)
+        main_output = outputs[0]
 
     # fusing with external component
     if external_dim != None and external_dim > 0:

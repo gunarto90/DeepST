@@ -6,8 +6,10 @@
 from __future__ import print_function
 
 import os
-#import cPickle as pickle
-import pickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 from copy import copy
 import numpy as np
 import h5py
@@ -21,7 +23,7 @@ from .STMatrix import STMatrix
 DATAPATH = Config().DATAPATH
 
 
-def load_holiday(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Holiday.txt')):
+def load_holiday(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Holiday.txt'), debug=False):
     f = open(fname, 'r')
     holidays = f.readlines()
     holidays = set([h.strip() for h in holidays])
@@ -29,21 +31,22 @@ def load_holiday(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Holiday.t
     for i, slot in enumerate(timeslots):
         if slot[:8] in holidays:
             H[i] = 1
-    print(H.sum())
+    if debug:
+        print(H.sum())
     # print(timeslots[H==1])
     return H[:, None]
 
 
-def load_meteorol(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Meteorology.h5')):
+def load_meteorol(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Meteorology.h5'), debug=False):
     '''
     timeslots: the predicted timeslots
     In real-world, we dont have the meteorol data in the predicted timeslot, instead, we use the meteoral at previous timeslots, i.e., slot = predicted_slot - timeslot (you can use predicted meteorol data as well)
     '''
     f = h5py.File(fname, 'r')
-    Timeslot = f['date'].value
-    WindSpeed = f['WindSpeed'].value
-    Weather = f['Weather'].value
-    Temperature = f['Temperature'].value
+    Timeslot = f['date'][()]
+    WindSpeed = f['WindSpeed'][()]
+    Weather = f['Weather'][()]
+    Temperature = f['Temperature'][()]
     f.close()
 
     M = dict()  # map timeslot to index
@@ -68,7 +71,8 @@ def load_meteorol(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Meteorol
     WS = 1. * (WS - WS.min()) / (WS.max() - WS.min())
     TE = 1. * (TE - TE.min()) / (TE.max() - TE.min())
 
-    print("shape: ", WS.shape, WR.shape, TE.shape)
+    if debug:
+        print("shape: ", WS.shape, WR.shape, TE.shape)
 
     # concatenate all these attributes
     merge_data = np.hstack([WR, WS[:, None], TE[:, None]])
@@ -79,7 +83,7 @@ def load_meteorol(timeslots, fname=os.path.join(DATAPATH, 'TaxiBJ', 'BJ_Meteorol
 
 def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=None,
               len_test=None, preprocess_name='preprocessing.pkl',
-              meta_data=True, meteorol_data=True, holiday_data=True):
+              meta_data=True, meteorol_data=True, holiday_data=True, debug=False):
     """
     """
     assert(len_closeness + len_period + len_trend > 0)
@@ -90,7 +94,8 @@ def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     for year in range(13, 17):
         fname = os.path.join(
             DATAPATH, 'TaxiBJ', 'BJ{}_M32x32_T30_InOut.h5'.format(year))
-        print("file name: ", fname)
+        if debug:
+            print("file name: ", fname)
         stat(fname)
         data, timestamps = load_stdata(fname)
         # print(timestamps)
@@ -100,11 +105,13 @@ def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
         data[data < 0] = 0.
         data_all.append(data)
         timestamps_all.append(timestamps)
-        print("\n")
+        if debug:
+            print("\n")
 
     # minmax_scale
     data_train = np.vstack(copy(data_all))[:-len_test]
-    print('train_data shape: ', data_train.shape)
+    if debug:
+        print('train_data shape: ', data_train.shape)
     mmn = MinMaxNormalization()
     mmn.fit(data_train)
     data_all_mmn = [mmn.transform(d) for d in data_all]
@@ -149,7 +156,7 @@ def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
         meta_feature.shape) > 1 else None
     if metadata_dim < 1:
         metadata_dim = None
-    if meta_data and holiday_data and meteorol_data:
+    if meta_data and holiday_data and meteorol_data and debug:
         print('time feature:', time_feature.shape, 'holiday feature:', holiday_feature.shape,
               'meteorol feature: ', meteorol_feature.shape, 'mete feature: ', meta_feature.shape)
 
@@ -157,8 +164,9 @@ def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     XP = np.vstack(XP)
     XT = np.vstack(XT)
     Y = np.vstack(Y)
-    print("XC shape: ", XC.shape, "XP shape: ", XP.shape,
-          "XT shape: ", XT.shape, "Y shape:", Y.shape)
+    if debug:
+        print("XC shape: ", XC.shape, "XP shape: ", XP.shape,
+              "XT shape: ", XT.shape, "Y shape:", Y.shape)
 
     XC_train, XP_train, XT_train, Y_train = XC[
         :-len_test], XP[:-len_test], XT[:-len_test], Y[:-len_test]
@@ -175,18 +183,20 @@ def load_data(T=48, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     for l, X_ in zip([len_closeness, len_period, len_trend], [XC_test, XP_test, XT_test]):
         if l > 0:
             X_test.append(X_)
-    print('train shape:', XC_train.shape, Y_train.shape,
-          'test shape: ', XC_test.shape, Y_test.shape)
+    if debug:
+        print('train shape:', XC_train.shape, Y_train.shape,
+              'test shape: ', XC_test.shape, Y_test.shape)
 
     if metadata_dim is not None:
         meta_feature_train, meta_feature_test = meta_feature[
             :-len_test], meta_feature[-len_test:]
         X_train.append(meta_feature_train)
         X_test.append(meta_feature_test)
-    for _X in X_train:
-        print(_X.shape, )
-    print()
-    for _X in X_test:
-        print(_X.shape, )
-    print()
+    if debug:
+        for _X in X_train:
+            print(_X.shape, )
+        print()
+        for _X in X_test:
+            print(_X.shape, )
+        print()
     return X_train, Y_train, X_test, Y_test, mmn, metadata_dim, timestamp_train, timestamp_test

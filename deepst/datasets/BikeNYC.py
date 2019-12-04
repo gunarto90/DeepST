@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import os
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 import numpy as np
 
 from . import load_stdata
@@ -16,7 +19,7 @@ np.random.seed(1337)  # for reproducibility
 DATAPATH = Config().DATAPATH
 
 
-def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=None, len_test=None, preprocess_name='preprocessing.pkl', meta_data=True):
+def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=None, len_test=None, preprocess_name='preprocessing.pkl', meta_data=True, meteorol_data=None, holiday_data=None, debug=False):
     assert(len_closeness + len_period + len_trend > 0)
     # load data
     data, timestamps = load_stdata(os.path.join(DATAPATH, 'BikeNYC', 'NYC14_M16x8_T60_NewEnd.h5'))
@@ -29,14 +32,15 @@ def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     timestamps_all = [timestamps]
     # minmax_scale
     data_train = data[:-len_test]
-    print('train_data shape: ', data_train.shape)
+    if debug:
+        print('train_data shape: ', data_train.shape)
     mmn = MinMaxNormalization()
     mmn.fit(data_train)
     data_all_mmn = []
     for d in data_all:
         data_all_mmn.append(mmn.transform(d))
 
-    fpkl = open('preprocessing.pkl', 'wb')
+    fpkl = open(preprocess_name, 'wb')
     for obj in [mmn]:
         pickle.dump(obj, fpkl)
     fpkl.close()
@@ -58,7 +62,8 @@ def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     XP = np.vstack(XP)
     XT = np.vstack(XT)
     Y = np.vstack(Y)
-    print("XC shape: ", XC.shape, "XP shape: ", XP.shape, "XT shape: ", XT.shape, "Y shape:", Y.shape)
+    if debug:
+        print("XC shape: ", XC.shape, "XP shape: ", XP.shape, "XT shape: ", XT.shape, "Y shape:", Y.shape)
     XC_train, XP_train, XT_train, Y_train = XC[:-len_test], XP[:-len_test], XT[:-len_test], Y[:-len_test]
     XC_test, XP_test, XT_test, Y_test = XC[-len_test:], XP[-len_test:], XT[-len_test:], Y[-len_test:]
     
@@ -71,7 +76,8 @@ def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
     for l, X_ in zip([len_closeness, len_period, len_trend], [XC_test, XP_test, XT_test]):
         if l > 0:
             X_test.append(X_)
-    print('train shape:', XC_train.shape, Y_train.shape, 'test shape: ', XC_test.shape, Y_test.shape)
+    if debug:
+        print('train shape:', XC_train.shape, Y_train.shape, 'test shape: ', XC_test.shape, Y_test.shape)
     # load meta feature
     if meta_data:
         meta_feature = timestamp2vec(timestamps_Y)
@@ -81,10 +87,11 @@ def load_data(T=24, nb_flow=2, len_closeness=None, len_period=None, len_trend=No
         X_test.append(meta_feature_test)
     else:
         metadata_dim = None
-    for _X in X_train:
-        print(_X.shape, )
-    print()
-    for _X in X_test:
-        print(_X.shape, )
-    print()
+    if debug:
+        for _X in X_train:
+            print(_X.shape, )
+        print()
+        for _X in X_test:
+            print(_X.shape, )
+        print()
     return X_train, Y_train, X_test, Y_test, mmn, metadata_dim, timestamp_train, timestamp_test

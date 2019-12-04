@@ -12,13 +12,14 @@ class MinMaxNormalization(object):
        x = x * 2 - 1
     '''
 
-    def __init__(self):
-        pass
+    def __init__(self, debug=False):
+        self.debug=debug
 
     def fit(self, X):
         self._min = X.min()
         self._max = X.max()
-        print("min:", self._min, "max:", self._max)
+        if self.debug:
+            print("min:", self._min, "max:", self._max)
 
     def transform(self, X):
         X = 1. * (X - self._min) / (self._max - self._min)
@@ -40,13 +41,14 @@ class MinMaxNormalization_01(object):
        x = (x - min) / (max - min).
     '''
 
-    def __init__(self):
-        pass
+    def __init__(self, debug=False):
+        self.debug = debug
 
     def fit(self, X):
         self._min = X.min()
         self._max = X.max()
-        print("min:", self._min, "max:", self._max)
+        if self.debug:
+            print("min:", self._min, "max:", self._max)
 
     def transform(self, X):
         X = 1. * (X - self._min) / (self._max - self._min)
